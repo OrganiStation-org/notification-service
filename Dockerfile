@@ -1,29 +1,25 @@
-FROM python:3.11-slim
-
-# Create a non-root user and group
-RUN groupadd -r appgroup && useradd -r -g appgroup -s /sbin/nologin appuser
-
+# Stage 1: Build/Deps
+FROM python:3.11-slim AS build
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source and set ownership to appuser
-COPY src/ ./src/
-RUN chown -R appuser:appgroup /app
+# Stage 2: Runtime
+FROM python:3.11-slim
+WORKDIR /app
 
-# Switch to non-root user
+RUN useradd --create-home appuser
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /usr/local /usr/local
+COPY --chown=appuser:appuser . .
 USER appuser
-
-ENV PYTHONPATH=/app
-ENV PORT=8005
-
-EXPOSE 8005
-
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8005"]
+EXPOSE 8007
+CMD ["python", "app.py"]
