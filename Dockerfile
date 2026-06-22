@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim
@@ -18,8 +18,14 @@ WORKDIR /app
 RUN useradd --create-home appuser
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /usr/local /usr/local
+# Copy installed packages from build stage
+COPY --from=build /root/.local /home/appuser/.local
 COPY --chown=appuser:appuser . .
+
+# Ensure .local/bin is in PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
 USER appuser
+
 EXPOSE 8007
-CMD ["python", "app.py"]
+# Start using uvicorn as a module to handle the 'src' package correctly
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8007"]
