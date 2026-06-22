@@ -1,4 +1,4 @@
-name: Notification Service CI Pipeline
+name: Notification Service CI Pipeline.
 
 on:
   push:
