@@ -1,31 +1,26 @@
-# Stage 1: Build/Deps
-FROM python:3.11-slim AS build
+FROM python:3.11-slim
+
 WORKDIR /app
 
-# Install build dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Python requirements
 COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Runtime
-FROM python:3.11-slim
-WORKDIR /app
+# Copy application code
+COPY . .
 
-RUN useradd --create-home appuser
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Copy installed packages from build stage
-COPY --from=build /root/.local /home/appuser/.local
-COPY --chown=appuser:appuser . .
-
-# Ensure .local/bin is in PATH
-ENV PATH=/home/appuser/.local/bin:$PATH
+# Create a non-root user for security
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8007
-# Start using uvicorn as a module to handle the 'src' package correctly
+
+# Run from the root directory so 'src' is recognized as a package
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8007"]
