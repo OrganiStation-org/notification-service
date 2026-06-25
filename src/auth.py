@@ -12,8 +12,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             token, 
             settings.JWT_SECRET, 
             algorithms=[settings.JWT_ALGORITHM],
-            audience=settings.JWT_AUDIENCE,
-            issuer=settings.JWT_ISSUER
+            options={"verify_aud": False, "verify_iss": False}
         )
         return payload
     except JWTError as e:
